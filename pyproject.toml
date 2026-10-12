@@ -1,0 +1,26 @@
+[project]
+name = "stock-portfolio"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nicolas Aravena", email = "naravena@pm.me" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic~=2.14.0",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+stock-portfolio = "stock_portfolio:run"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.10",
+    "ty>=0.0.84",
+]
