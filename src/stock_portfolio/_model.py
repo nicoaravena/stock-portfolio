@@ -1,4 +1,4 @@
-"""Portfolio rebalancing proof of concept (Pydantic v2, plain input data only)."""
+"""Portfolio rebalancing proof of concept (plain input data only)."""
 
 from decimal import ROUND_FLOOR, Decimal
 from enum import Enum
@@ -106,7 +106,7 @@ class Portfolio(BaseModel):
     def market_value(self) -> Decimal:
         return sum((h.market_value for h in self.holdings), Decimal(0))
 
-    def rebalance(self, cash: Decimal | int | str = 0) -> RebalancePlan:
+    def rebalance(self, cash: float = 0.0) -> RebalancePlan:
         """Return the trades needed to reach the target allocation.
 
         - cash=0 (default): self-funded, sells pay for buys.
@@ -115,11 +115,11 @@ class Portfolio(BaseModel):
           exceed available funds; the remainder is reported as `cash_leftover`.
         - Held symbols absent from the allocation have a 0% target (sold fully).
         """
-        cash = Decimal(str(cash))
-        if cash < 0:
+        _cash = Decimal(cash)
+        if _cash < 0:
             raise ValueError("cash must be >= 0")
 
-        total = self.market_value + cash
+        total = self.market_value + _cash
         trades: list[Trade] = []
         invested = Decimal(0)
 

@@ -9,8 +9,7 @@ cli = typer.Typer()
 
 @cli.command("run")
 def run(
-    fund: Decimal | int | str = 0,
-    cash: Decimal | int | str = 1000,
+    cash: float,
 ):
     portfolio = Portfolio(
         holdings=[
@@ -20,8 +19,8 @@ def run(
         allocation={"META": "40", "AAPL": "60"},
     )
 
-    plan = portfolio.rebalance(fund)
-    print(f"Starting with self-funded: ${plan.total_value}")
+    plan = portfolio.rebalance()
+    print(f"Rebalance self-funded portfolio (initial): ${plan.total_value}")
     for t in plan.trades:
         print(
             f"  {t.action.value:<4} {t.quantity:>3} {t.symbol} @ {t.price} = {t.amount}"

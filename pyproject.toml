@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-stock-portfolio = "stock_portfolio:run"
+stock-portfolio = "stock_portfolio:cli"
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]

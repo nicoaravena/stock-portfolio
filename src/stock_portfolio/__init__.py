@@ -1,1 +1,1 @@
-from .main import run  # noqa: F401
+from .main import cli  # noqa: F401
