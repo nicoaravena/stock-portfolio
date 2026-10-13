@@ -101,9 +101,7 @@ class Portfolio(BaseModel):
             if h != self.holdings[h].symbol:
                 mismatch.append((h, self.holdings[h]))
         if mismatch:
-            raise ValueError(
-                f"Holdings mismatch with some symbols: {mismatch}"
-            )
+            raise ValueError(f"Holdings mismatch with some symbols: {mismatch}")
         missing = set(self.allocation) - self.holdings.keys()
         if missing:
             raise ValueError(

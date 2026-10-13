@@ -6,6 +6,7 @@ from ._model import Holding, Portfolio, RebalancePlan, Stock
 cli = typer.Typer()
 console = Console()
 
+
 def _plan_output(plan: RebalancePlan):
     console.print(f"Adding cash value: {plan.total_value}")
     for t in plan.trades:
@@ -20,7 +21,7 @@ def _portfolio_output(portfolio: Portfolio):
     for sym in portfolio.holdings:
         h = portfolio.holdings[sym]
         console.print(
-            f"  {h.symbol:<4} [{portfolio.allocation[sym]}%] {h.quantity:>3} x {h.stock.last_price} = {h.quantity*h.stock.last_price}"
+            f"  {h.symbol:<4} [{portfolio.allocation[sym]}%] {h.quantity:>3} x {h.stock.last_price} = {h.quantity * h.stock.last_price}"
         )
     console.print(f"  Cash leftover: {portfolio.cash_leftover}")
 
