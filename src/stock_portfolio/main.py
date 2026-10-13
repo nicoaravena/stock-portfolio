@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 import typer
 from rich import print
 
