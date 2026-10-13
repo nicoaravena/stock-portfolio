@@ -80,6 +80,7 @@ class Portfolio(BaseModel):
 
     holdings: dict[str, Holding]
     allocation: dict[str, Decimal]
+    cash_leftover: Decimal
 
     @field_validator("allocation")
     @classmethod
@@ -124,7 +125,7 @@ class Portfolio(BaseModel):
           exceed available funds; the remainder is reported as `cash_leftover`.
         - Held symbols absent from the allocation have a 0% target (sold fully).
         """
-        _cash = Decimal(cash)
+        _cash = Decimal(cash) + self.cash_leftover
         if _cash < 0:
             raise ValueError("cash must be >= 0")
 
@@ -158,3 +159,19 @@ class Portfolio(BaseModel):
         return RebalancePlan(
             total_value=total, trades=trades, cash_leftover=total - invested
         )
+
+    def execute_trade_plan(self, plan: RebalancePlan):
+        for trade in plan.trades:
+            if trade.action == Action.SELL:
+                new_quantity = self.holdings[trade.symbol].quantity - trade.quantity
+            elif trade.action == Action.BUY:
+                new_quantity = self.holdings[trade.symbol].quantity + trade.quantity
+            if new_quantity < 0:
+                raise ValueError(
+                    "Can't execute trade, final holding quantity must not be negative.",
+                    self.holdings[trade.symbol],
+                    trade,
+                )
+            self.holdings[trade.symbol].quantity = new_quantity
+
+        self.cash_leftover = plan.cash_leftover
