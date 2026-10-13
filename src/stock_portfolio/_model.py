@@ -45,6 +45,10 @@ class Holding(BaseModel):
     def market_value(self) -> Decimal:
         return self.stock.current_price() * self.quantity
 
+    @property
+    def symbol(self) -> str:
+        return self.stock.symbol
+
 
 class Trade(BaseModel):
     symbol: str
@@ -74,7 +78,7 @@ class RebalancePlan(BaseModel):
 class Portfolio(BaseModel):
     """Holdings plus the target allocation (symbol -> percentage, must sum to 100)."""
 
-    holdings: list[Holding]
+    holdings: dict[str, Holding]
     allocation: dict[str, Decimal]
 
     @field_validator("allocation")
@@ -91,10 +95,15 @@ class Portfolio(BaseModel):
 
     @model_validator(mode="after")
     def _validate_consistency(self) -> "Portfolio":
-        symbols = [h.stock.symbol for h in self.holdings]
-        if len(symbols) != len(set(symbols)):
-            raise ValueError("Duplicate symbols in holdings")
-        missing = set(self.allocation) - set(symbols)
+        mismatch = []
+        for h in self.holdings:
+            if h != self.holdings[h].symbol:
+                mismatch.append((h, self.holdings[h]))
+        if mismatch:
+            raise ValueError(
+                f"Holdings mismatch with some symbols: {mismatch}"
+            )
+        missing = set(self.allocation) - self.holdings.keys()
         if missing:
             raise ValueError(
                 f"Allocated symbols missing from holdings: {sorted(missing)} "
@@ -104,7 +113,7 @@ class Portfolio(BaseModel):
 
     @property
     def market_value(self) -> Decimal:
-        return sum((h.market_value for h in self.holdings), Decimal(0))
+        return sum((h.market_value for h in self.holdings.values()), Decimal(0))
 
     def rebalance(self, cash: float = 0.0) -> RebalancePlan:
         """Return the trades needed to reach the target allocation.
@@ -123,7 +132,7 @@ class Portfolio(BaseModel):
         trades: list[Trade] = []
         invested = Decimal(0)
 
-        for holding in self.holdings:
+        for holding in self.holdings.values():
             symbol = holding.stock.symbol
             price = holding.stock.current_price()
             weight = self.allocation.get(symbol, Decimal(0))

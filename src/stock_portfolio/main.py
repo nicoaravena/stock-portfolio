@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import typer
+from rich import print
 
 from ._model import Holding, Portfolio, Stock
 
@@ -12,10 +13,10 @@ def run(
     cash: float,
 ):
     portfolio = Portfolio(
-        holdings=[
-            Holding(stock=Stock(symbol="META", last_price="500"), quantity=10),
-            Holding(stock=Stock(symbol="AAPL", last_price="200"), quantity=20),
-        ],
+        holdings={
+            "META": Holding(stock=Stock(symbol="META", last_price="500"), quantity=10),
+            "AAPL": Holding(stock=Stock(symbol="AAPL", last_price="200"), quantity=20),
+        },
         allocation={"META": "40", "AAPL": "60"},
     )
 
