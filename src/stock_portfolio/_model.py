@@ -125,15 +125,16 @@ class Portfolio(BaseModel):
 
         - cash=0 (default): self-funded, sells pay for buys.
         - cash>0: fresh cash is added to the pool before computing targets.
+        - cash<0: cash is beeing removed from the portfolio before computing targets.
         - Whole shares only: target quantities are rounded DOWN so buys never
           exceed available funds; the remainder is reported as `cash_leftover`.
         - Held symbols absent from the allocation have a 0% target (sold fully).
         """
         _cash = Decimal(cash) + self.cash_leftover
-        if _cash < 0:
-            raise ValueError("cash must be >= 0")
 
         total = self.market_value + _cash
+        if total < 0:
+            raise ValueError("cash must not be greater than market_value + cash_leftover")
         trades: list[Trade] = []
         invested = Decimal(0)
 

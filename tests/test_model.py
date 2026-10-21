@@ -86,6 +86,23 @@ def test_portfolio_init(holdings: list[Holding], allocation: list):
                 cash_leftover=Decimal("1.0"),
             ),
         ),
+        pytest.param(
+            [
+                Holding(stock=Stock(symbol="A", last_price="1.0"), quantity=3),
+                Holding(stock=Stock(symbol="B", last_price="2.5"), quantity=2),
+            ],
+            [60, 40],
+            Decimal("-3.0"),
+            RebalancePlan(
+                total_value=Decimal("5.0"),
+                trades=[
+                    Trade(
+                        symbol="B", action=Action.SELL, quantity=2, price=Decimal("2.5")
+                    ),
+                ],
+                cash_leftover=Decimal("2.0"),
+            ),
+        ),
     ],
 )
 def test_portfolio_rebalance(
@@ -103,7 +120,7 @@ def test_portfolio_rebalance(
 
 
 @pytest.mark.parametrize(
-    "holdings,allocation,expected_portfolio",
+    "holdings,allocation,rebalance_cash,expected_portfolio",
     [
         pytest.param(
             [
@@ -111,10 +128,24 @@ def test_portfolio_rebalance(
                 Holding(stock=Stock(symbol="B", last_price="2.5"), quantity=2),
             ],
             [60, 40],
+            Decimal("5.0"),
             _init_portfolio(
                 holdings=[Holding(stock=Stock(symbol='A', last_price=Decimal('1.0')), quantity=7),Holding(stock=Stock(symbol='B', last_price=Decimal('2.5')), quantity=2)],
                 allocation=[60, 40],
                 cash_leftover=Decimal('1.0')
+            )
+        ),
+        pytest.param(
+            [
+                Holding(stock=Stock(symbol="A", last_price="1.0"), quantity=3),
+                Holding(stock=Stock(symbol="B", last_price="2.5"), quantity=2),
+            ],
+            [60, 40],
+            Decimal("-3.0"),
+            _init_portfolio(
+                holdings=[Holding(stock=Stock(symbol='A', last_price=Decimal('1.0')), quantity=3),Holding(stock=Stock(symbol='B', last_price=Decimal('2.5')), quantity=0)],
+                allocation=[60, 40],
+                cash_leftover=Decimal('2.0')
             )
         ),
     ],
@@ -122,9 +153,9 @@ def test_portfolio_rebalance(
 def test_portfolio_executed_trade_plan(
     holdings: list[Holding],
     allocation: list,
+    rebalance_cash: Decimal,
     expected_portfolio: Portfolio,
 ):
-    rebalance_cash = Decimal("5.0")
     portfolio = _init_portfolio(holdings, allocation)
 
     plan = portfolio.rebalance(rebalance_cash)
