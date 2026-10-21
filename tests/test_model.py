@@ -13,7 +13,9 @@ from stock_portfolio._model import (
 )
 
 
-def _init_portfolio(holdings: Iterable[Holding], allocation: list, cash_leftover="0") -> Portfolio:
+def _init_portfolio(
+    holdings: Iterable[Holding], allocation: list, cash_leftover="0"
+) -> Portfolio:
     return Portfolio(
         holdings={h.symbol: h for h in holdings},
         allocation={h.symbol: allocation[idx] for idx, h in enumerate(holdings)},
@@ -130,10 +132,17 @@ def test_portfolio_rebalance(
             [60, 40],
             Decimal("5.0"),
             _init_portfolio(
-                holdings=[Holding(stock=Stock(symbol='A', last_price=Decimal('1.0')), quantity=7),Holding(stock=Stock(symbol='B', last_price=Decimal('2.5')), quantity=2)],
+                holdings=[
+                    Holding(
+                        stock=Stock(symbol="A", last_price=Decimal("1.0")), quantity=7
+                    ),
+                    Holding(
+                        stock=Stock(symbol="B", last_price=Decimal("2.5")), quantity=2
+                    ),
+                ],
                 allocation=[60, 40],
-                cash_leftover=Decimal('1.0')
-            )
+                cash_leftover=Decimal("1.0"),
+            ),
         ),
         pytest.param(
             [
@@ -143,10 +152,17 @@ def test_portfolio_rebalance(
             [60, 40],
             Decimal("-3.0"),
             _init_portfolio(
-                holdings=[Holding(stock=Stock(symbol='A', last_price=Decimal('1.0')), quantity=3),Holding(stock=Stock(symbol='B', last_price=Decimal('2.5')), quantity=0)],
+                holdings=[
+                    Holding(
+                        stock=Stock(symbol="A", last_price=Decimal("1.0")), quantity=3
+                    ),
+                    Holding(
+                        stock=Stock(symbol="B", last_price=Decimal("2.5")), quantity=0
+                    ),
+                ],
                 allocation=[60, 40],
-                cash_leftover=Decimal('2.0')
-            )
+                cash_leftover=Decimal("2.0"),
+            ),
         ),
     ],
 )
@@ -163,4 +179,7 @@ def test_portfolio_executed_trade_plan(
     assert portfolio.market_value == expected_portfolio.market_value
     assert portfolio.cash_leftover == expected_portfolio.cash_leftover
     for symbol in portfolio.holdings:
-        assert portfolio.holdings[symbol].quantity == expected_portfolio.holdings[symbol].quantity
+        assert (
+            portfolio.holdings[symbol].quantity
+            == expected_portfolio.holdings[symbol].quantity
+        )

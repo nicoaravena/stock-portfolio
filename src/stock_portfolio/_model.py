@@ -134,7 +134,9 @@ class Portfolio(BaseModel):
 
         total = self.market_value + _cash
         if total < 0:
-            raise ValueError("cash must not be greater than market_value + cash_leftover")
+            raise ValueError(
+                "cash must not be greater than market_value + cash_leftover"
+            )
         trades: list[Trade] = []
         invested = Decimal(0)
 
@@ -144,7 +146,9 @@ class Portfolio(BaseModel):
 
             target_value = total * weight / HUNDRED
             target_qty = int(
-                (target_value / holding.stock.current_price).to_integral_value(rounding=ROUND_FLOOR)
+                (target_value / holding.stock.current_price).to_integral_value(
+                    rounding=ROUND_FLOOR
+                )
             )
             invested += holding.stock.current_price * target_qty
 
