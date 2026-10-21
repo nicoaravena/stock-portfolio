@@ -9,11 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "pydantic~=2.14.0",
-    "typer>=0.27.3",
 ]
-
-[project.scripts]
-stock-portfolio = "stock_portfolio:cli"
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
