@@ -7,7 +7,6 @@ This is just a PoC to solve this 3 points:
 - Provide a portfolio rebalance method to know which Stocks should be sold and which ones should be bought to have a balanced Portfolio based on the portfolio’s allocation.
 
 
-## Dependencies
+## Assumptions
 
-- pydantic
-- typer
+- 

@@ -5,7 +5,7 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-HUNDRED = Decimal(100)
+HUNDRED = Decimal(value="100.0")
 
 
 class Action(str, Enum):
@@ -26,6 +26,7 @@ class Stock(BaseModel):
     def _upper_symbol(cls, v: str) -> str:
         return v.upper()
 
+    @property
     def current_price(self) -> Decimal:
         """Getter: last available price."""
         return self.last_price
@@ -43,7 +44,7 @@ class Holding(BaseModel):
 
     @property
     def market_value(self) -> Decimal:
-        return self.stock.current_price() * self.quantity
+        return self.stock.current_price * self.quantity
 
     @property
     def symbol(self) -> str:
@@ -76,7 +77,12 @@ class RebalancePlan(BaseModel):
 
 
 class Portfolio(BaseModel):
-    """Holdings plus the target allocation (symbol -> percentage, must sum to 100)."""
+    """Portfolio is where the a group of holdings are distributed by a
+    specific allocation.
+
+    holdings: A key-value dict, where the key is the symbol of the holding.
+    allocation: A key-value dict, where the key is the symbol of a holding and the value is the % to distribute the quantity of the holding.
+    cash_leftover: Is the amount of cash left from a rebalance."""
 
     holdings: dict[str, Holding]
     allocation: dict[str, Decimal]
@@ -114,7 +120,7 @@ class Portfolio(BaseModel):
     def market_value(self) -> Decimal:
         return sum((h.market_value for h in self.holdings.values()), Decimal(0))
 
-    def rebalance(self, cash: float = 0.0) -> RebalancePlan:
+    def rebalance(self, cash: Decimal = Decimal(0)) -> RebalancePlan:
         """Return the trades needed to reach the target allocation.
 
         - cash=0 (default): self-funded, sells pay for buys.
@@ -133,14 +139,13 @@ class Portfolio(BaseModel):
 
         for holding in self.holdings.values():
             symbol = holding.stock.symbol
-            price = holding.stock.current_price()
             weight = self.allocation.get(symbol, Decimal(0))
 
             target_value = total * weight / HUNDRED
             target_qty = int(
-                (target_value / price).to_integral_value(rounding=ROUND_FLOOR)
+                (target_value / holding.stock.current_price).to_integral_value(rounding=ROUND_FLOOR)
             )
-            invested += price * target_qty
+            invested += holding.stock.current_price * target_qty
 
             delta = target_qty - holding.quantity
             if delta != 0:
@@ -149,7 +154,7 @@ class Portfolio(BaseModel):
                         symbol=symbol,
                         action=Action.BUY if delta > 0 else Action.SELL,
                         quantity=abs(delta),
-                        price=price,
+                        price=holding.stock.current_price,
                     )
                 )
 
