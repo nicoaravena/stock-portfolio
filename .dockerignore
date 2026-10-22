@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+.pytest_cache
+.ruff_cache
+.coverage
+**/__pycache__
+db.sqlite3
+cartero
+tests
+Dockerfile
+.dockerignore
