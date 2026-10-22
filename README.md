@@ -72,3 +72,24 @@ flowchart TD
     J -- no --> K["portfolio.cash_leftover = plan.cash_leftover<br/>portfolio.pending_plan = None"]
     K --> L["COMMIT"]
 ```
+
+## HTTP API (Django + Django Ninja, SQLite)
+
+```bash
+uv sync
+uv run python manage.py migrate      # creates ./db.sqlite3
+uv run python manage.py runserver    # Swagger UI at http://127.0.0.1:8000/api/docs
+```
+
+| Method | Path | Body |
+|---|---|---|
+| GET/POST | `/api/stocks` | `{"symbol": "META", "last_price": "500"}` |
+| GET/PUT/DELETE | `/api/stocks/{symbol}` | PUT: `{"last_price": "510"}` |
+| GET/POST | `/api/portfolios` | `{"name": "main", "holdings": [{"symbol": "META", "quantity": 2, "allocation": 40}, {"symbol": "AAPL", "allocation": 60}], "cash_leftover": "0"}` |
+| GET/PUT/DELETE | `/api/portfolios/{id}` | PUT: same as POST (full replace) |
+| POST | `/api/portfolios/{id}/rebalance` | `{"cash": "1000"}` (optional, may be negative) |
+| POST | `/api/portfolios/{id}/execute-trades` | – |
+
+- Stocks must exist before they are used in a portfolio. `quantity` and `allocation` default to 0; allocations must sum to 100 and a 0% holding is sold fully on rebalance.
+- `rebalance` stores the plan on the portfolio (`pending_plan`). `execute-trades` applies it and clears it. Updating a portfolio discards the pending plan.
+- A stock held by a portfolio can't be deleted (409). Domain validation errors return 422.
