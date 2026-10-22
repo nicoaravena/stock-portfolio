@@ -8,6 +8,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "django~=6.1.2",
+    "django-ninja~=1.7.1",
     "pydantic~=2.14.0",
 ]
 
@@ -19,9 +21,16 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
     "ruff>=0.16.10",
     "ty>=0.0.84",
 ]
 
 [tool.pytest-cov]
 target = "src/"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "stock_portfolio.api.settings"
+
+[tool.ruff]
+extend-exclude = ["src/stock_portfolio/api/migrations"]
