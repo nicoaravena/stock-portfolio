@@ -26,10 +26,6 @@ class Trade:
     quantity: int
     price: Decimal
 
-    @property
-    def amount(self) -> Decimal:
-        return self.price * self.quantity
-
 
 @dataclass(frozen=True)
 class RebalancePlan:
@@ -83,9 +79,12 @@ class Portfolio:
 
     def market_value(self) -> Decimal:
         """Value of the shares held, at their current prices."""
+        return self._value_at({stock: stock.current_price() for stock in self.holdings})
+
+    def _value_at(self, prices: Mapping[Stock, Decimal]) -> Decimal:
+        """Value of the shares held, at the given prices."""
         return sum(
-            (stock.current_price() * qty for stock, qty in self.holdings.items()),
-            Decimal(0),
+            (prices[stock] * qty for stock, qty in self.holdings.items()), Decimal(0)
         )
 
     def rebalance(self, cash_delta: Decimal = Decimal(0)) -> RebalancePlan:
@@ -111,11 +110,14 @@ class Portfolio:
         ]
         prices = {stock: stock.current_price() for stock in stocks}
 
-        invested_now = sum(
-            (prices[stock] * qty for stock, qty in self.holdings.items()), Decimal(0)
-        )
-        total = invested_now + self.cash + cash_delta
+        # Value the holdings with the snapshot above, not market_value(): asking
+        # the provider again could return a newer price, and the total would no
+        # longer match the prices the trades are planned with.
+        total = self._value_at(prices) + self.cash + cash_delta
         if total < 0:
+            # Worded with the HTTP field names (`cash`, `cash_leftover`) on
+            # purpose: API clients see this text in 422 responses, and the API
+            # tests and cartero/17 assert it. Keep it stable.
             raise InsufficientFundsError(
                 "cash must not be greater than market_value + cash_leftover"
             )
