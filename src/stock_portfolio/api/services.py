@@ -14,13 +14,13 @@ from stock_portfolio.api.schemas import HUNDRED, PortfolioIn, RebalancePlan, Tra
 
 
 def _holdings(portfolio: models.Portfolio) -> list[models.Holding]:
-    # .all() reuses a prefetch_related cache when the caller loaded one.
-    return sorted(portfolio.holdings.all(), key=lambda h: h.id)  # ty: ignore[unresolved-attribute]
+    """All holdings with their stock, in one query, oldest first."""
+    return list(portfolio.holdings.select_related("stock").order_by("id"))
 
 
-def to_domain(portfolio: models.Portfolio) -> domain.Portfolio:
-    """Build the domain Portfolio, with prices frozen as loaded from the DB."""
-    holdings = _holdings(portfolio)
+def _to_domain(
+    portfolio: models.Portfolio, holdings: list[models.Holding]
+) -> domain.Portfolio:
     prices = domain.PriceSnapshot(
         {h.stock.symbol: h.stock.last_price for h in holdings}
     )
@@ -33,11 +33,17 @@ def to_domain(portfolio: models.Portfolio) -> domain.Portfolio:
     )
 
 
+def to_domain(portfolio: models.Portfolio) -> domain.Portfolio:
+    """Build the domain Portfolio, with prices frozen as loaded from the DB."""
+    return _to_domain(portfolio, _holdings(portfolio))
+
+
 def rebalance(portfolio: models.Portfolio, cash: Decimal = Decimal(0)) -> RebalancePlan:
     """Plan the trades for `portfolio`, adding (cash > 0) or removing (cash < 0) cash."""
-    plan = to_domain(portfolio).rebalance(Decimal(cash))
+    holdings = _holdings(portfolio)
+    plan = _to_domain(portfolio, holdings).rebalance(Decimal(cash))
     # A stock appears once per portfolio (unique_portfolio_stock).
-    holding_ids = {h.stock.symbol: h.id for h in _holdings(portfolio)}
+    holding_ids = {h.stock.symbol: h.id for h in holdings}
     return RebalancePlan(
         total_value=plan.total_value,
         trades=[

@@ -199,3 +199,13 @@ def test_write_portfolio_unknown_stock_rolls_back(portfolio, holdings):
     assert portfolio.name == "p"
     assert portfolio.pending_plan is not None
     assert _quantities(portfolio) == {"A": 3, "B": 2}
+
+
+def test_rebalance_query_count(portfolio, django_assert_num_queries):
+    """Holdings and their stocks load in one query, however many holdings there are."""
+    stock = models.Stock.objects.create(symbol="C", last_price=PRICES["C"])
+    models.Holding.objects.create(portfolio=portfolio, stock=stock, quantity=1)
+    portfolio = models.Portfolio.objects.get(id=portfolio.id)  # no prefetch cache
+
+    with django_assert_num_queries(1):
+        services.rebalance(portfolio, Decimal(5))

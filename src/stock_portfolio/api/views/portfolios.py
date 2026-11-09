@@ -63,7 +63,7 @@ def delete_portfolio(request, portfolio_id: int):
 
 @router.post("/{portfolio_id}/rebalance", response={200: RebalancePlan, 409: ErrorOut})
 def rebalance_portfolio(request, portfolio_id: int, payload: RebalanceIn):
-    portfolio = _load(portfolio_id)
+    portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
     if portfolio.pending_plan:
         raise Conflict("Portfolio has a pending rebalance plan")
     plan = services.rebalance(portfolio, payload.cash)
