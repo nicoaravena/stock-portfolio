@@ -1,0 +1,8 @@
+# Expect: 404
+version = 1
+url = "{{BASE_URL}}/portfolios/{{PORTFOLIO_ID}}"
+method = "GET"
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

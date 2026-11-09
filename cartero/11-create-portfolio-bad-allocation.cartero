@@ -1,0 +1,25 @@
+# Expect: 422 allocations must sum to 100
+version = 1
+url = "{{BASE_URL}}/portfolios"
+method = "POST"
+
+[headers]
+Content-Type = "application/json"
+
+[body]
+type = "raw"
+format = "json"
+body = """
+{
+  "name": "bad",
+  "holdings": [
+    {
+      "symbol": "META",
+      "allocation": 50
+    }
+  ]
+}"""
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

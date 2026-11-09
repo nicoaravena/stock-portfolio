@@ -1,0 +1,8 @@
+# Expect: 200, META 1, AAPL 6, cash_leftover 310, pending_plan null
+version = 1
+url = "{{BASE_URL}}/portfolios/{{PORTFOLIO_ID}}/execute-trades"
+method = "POST"
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

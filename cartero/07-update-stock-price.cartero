@@ -1,0 +1,19 @@
+# Expect: 200, last_price 510
+version = 1
+url = "{{BASE_URL}}/stocks/META"
+method = "PUT"
+
+[headers]
+Content-Type = "application/json"
+
+[body]
+type = "raw"
+format = "json"
+body = """
+{
+  "last_price": "510"
+}"""
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

@@ -1,0 +1,8 @@
+# Expect: 409 no pending rebalance plan
+version = 1
+url = "{{BASE_URL}}/portfolios/{{PORTFOLIO_ID}}/execute-trades"
+method = "POST"
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

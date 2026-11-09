@@ -1,0 +1,26 @@
+# Expect: 200, full replace
+version = 1
+url = "{{BASE_URL}}/portfolios/{{PORTFOLIO_ID}}"
+method = "PUT"
+
+[headers]
+Content-Type = "application/json"
+
+[body]
+type = "raw"
+format = "json"
+body = """
+{
+  "name": "main-renamed",
+  "holdings": [
+    {
+      "symbol": "AAPL",
+      "quantity": 1,
+      "allocation": 100
+    }
+  ]
+}"""
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

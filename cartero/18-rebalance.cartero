@@ -1,0 +1,19 @@
+# Expect: 200, total_value 2020, SELL META x1, BUY AAPL x6, cash_leftover 310
+version = 1
+url = "{{BASE_URL}}/portfolios/{{PORTFOLIO_ID}}/rebalance"
+method = "POST"
+
+[headers]
+Content-Type = "application/json"
+
+[body]
+type = "raw"
+format = "json"
+body = """
+{
+  "cash": "1000"
+}"""
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"

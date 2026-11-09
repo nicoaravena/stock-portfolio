@@ -1,0 +1,20 @@
+# Expect: 201
+version = 1
+url = "{{BASE_URL}}/stocks"
+method = "POST"
+
+[headers]
+Content-Type = "application/json"
+
+[body]
+type = "raw"
+format = "json"
+body = """
+{
+  "symbol": "AAPL",
+  "last_price": "200"
+}"""
+
+[variables]
+BASE_URL = "http://127.0.0.1:8000/api"
+PORTFOLIO_ID = "1"
