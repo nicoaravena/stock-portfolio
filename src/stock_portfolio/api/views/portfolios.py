@@ -18,14 +18,14 @@ router = Router(tags=["portfolio"])
 
 def _load(portfolio_id: int) -> models.Portfolio:
     return get_object_or_404(
-        models.Portfolio.objects.prefetch_related("holdings__stock"),  # ty: ignore[unresolved-attribute]
+        models.Portfolio.objects.prefetch_related("holdings__stock"),
         id=portfolio_id,
     )
 
 
 @router.get("", response=list[PortfolioOut])
 def list_portfolios(request):
-    return models.Portfolio.objects.prefetch_related("holdings__stock").order_by("id")  # ty: ignore[unresolved-attribute]
+    return models.Portfolio.objects.prefetch_related("holdings__stock").order_by("id")
 
 
 @router.get("/{portfolio_id}", response=PortfolioOut)

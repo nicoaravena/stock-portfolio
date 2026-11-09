@@ -16,7 +16,7 @@ from stock_portfolio.api.schemas import (
 )
 
 
-def _trade(action: Action, quantity: int = 1, price: str = "1") -> Trade:
+def _trade(action: Action | str, quantity: int = 1, price: str = "1") -> Trade:
     return Trade(
         holding_id=1,
         symbol="A",
@@ -153,7 +153,7 @@ def test_portfolio_in_invalid_holdings(holdings: list[dict], message: str):
 def test_portfolio_in_invalid_fields(fields: dict):
     payload = {"name": "p", "holdings": [{"symbol": "A", "allocation": 100}]}
     with pytest.raises(ValidationError):
-        PortfolioIn(**(payload | fields))
+        PortfolioIn.model_validate(payload | fields)
 
 
 @pytest.mark.django_db

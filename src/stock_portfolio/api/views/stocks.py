@@ -18,7 +18,7 @@ router = Router(tags=["stock"])
 
 @router.get("", response=list[StockOut])
 def list_stocks(request):
-    return models.Stock.objects.order_by("symbol")  # ty: ignore[unresolved-attribute]
+    return models.Stock.objects.order_by("symbol")
 
 
 @router.get("/{symbol}", response=StockOut)

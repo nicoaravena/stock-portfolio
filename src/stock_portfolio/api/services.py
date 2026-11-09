@@ -64,7 +64,7 @@ def rebalance(portfolio: models.Portfolio, cash: Decimal = Decimal(0)) -> Rebala
 def execute_trade_plan(portfolio: models.Portfolio, plan: RebalancePlan) -> None:
     """Apply the plan's trades to the portfolio holdings and clear the plan."""
     for trade in plan.trades:
-        holding = models.Holding.objects.filter(  # ty: ignore[unresolved-attribute]
+        holding = models.Holding.objects.filter(
             id=trade.holding_id, portfolio=portfolio
         ).first()
         if holding is None:
@@ -96,12 +96,12 @@ def write_portfolio(portfolio: models.Portfolio, payload: PortfolioIn) -> None:
     portfolio.pending_plan = None
     portfolio.save()
 
-    portfolio.holdings.all().delete()  # ty: ignore[unresolved-attribute]
+    portfolio.holdings.all().delete()
     for h in payload.holdings:
-        stock = models.Stock.objects.filter(symbol=h.symbol).first()  # ty: ignore[unresolved-attribute]
+        stock = models.Stock.objects.filter(symbol=h.symbol).first()
         if stock is None:
             raise domain.StockNotFoundError(f"Stock {h.symbol} not found")
-        models.Holding.objects.create(  # ty: ignore[unresolved-attribute]
+        models.Holding.objects.create(
             portfolio=portfolio,
             stock=stock,
             quantity=h.quantity,
