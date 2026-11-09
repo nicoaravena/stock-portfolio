@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 from django.test import Client
 
-from stock_portfolio.api import services
+from stock_portfolio.api import models, services
 
 pytestmark = pytest.mark.django_db
 
@@ -304,6 +304,23 @@ def test_rebalance_stores_one_plan(client: Client, portfolio_id: int, monkeypatc
 
     first = client.post(f"{url}/rebalance", {}, JSON)
     assert sorted(r.status_code for r in [first, *concurrent]) == [200, 409]
+
+
+def test_rebalance_with_invalid_stored_price(client: Client, portfolio_id: int):
+    """The API rejects non-positive prices, but the domain still guards the data
+    it is given: a bad price in the database is a domain error (422)."""
+    models.Stock.objects.filter(symbol="A").update(last_price=0)
+    response = client.post(f"/api/portfolios/{portfolio_id}/rebalance", {}, JSON)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "A price must be positive, got 0.000000"}
+
+
+def test_corrupt_pending_plan_is_500(client: Client, portfolio_id: int):
+    """A stored plan that no longer parses is a server fault, not a client one."""
+    models.Portfolio.objects.filter(pk=portfolio_id).update(pending_plan={"bad": 1})
+    client.raise_request_exception = False
+    response = client.post(f"/api/portfolios/{portfolio_id}/execute-trades")
+    assert response.status_code == 500
 
 
 def test_unexpected_value_error_is_500(client: Client, portfolio_id: int, monkeypatch):

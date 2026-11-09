@@ -1,5 +1,4 @@
 from ninja import NinjaAPI
-from pydantic import ValidationError as PydanticValidationError
 
 from stock_portfolio.api.services import NoPendingPlanError, PendingPlanError
 from stock_portfolio.domain import (
@@ -39,7 +38,8 @@ def _insufficient_funds(request, exc):
     return api.create_response(request, {"detail": detail}, status=422)
 
 
+# Request bodies are validated by Ninja (422 with field errors). A pydantic error
+# raised later, e.g. a stored plan that no longer parses, is a server fault: 500.
 @api.exception_handler(PortfolioError)
-@api.exception_handler(PydanticValidationError)
 def _domain_error(request, exc):
     return api.create_response(request, {"detail": str(exc)}, status=422)
