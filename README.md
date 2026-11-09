@@ -17,6 +17,7 @@ Rounding down means the buys never cost more than the money available; the price
 - `src/stock_portfolio/domain/portfolio.py` - the `Portfolio` class and `Portfolio.rebalance()`
 - `src/stock_portfolio/domain/stock.py` - the `Stock` class and `Stock.current_price()`
 - `tests/domain/` - the rebalance rules as executable examples (no database needed)
+- `src/stock_portfolio/api` - A simple REST API that applies what lives in `src/stock_portfolio/domain/`
 
 ## Project structure
 
