@@ -128,7 +128,7 @@ def test_rebalance_default_cash_delta_is_zero():
 )
 def test_rebalance_rejects_removing_too_much_cash(holdings, cash, cash_delta):
     portfolio = _portfolio(holdings, {"A": "1"}, cash)
-    with pytest.raises(InsufficientFundsError, match="cash must not be greater"):
+    with pytest.raises(InsufficientFundsError, match="Cannot withdraw"):
         portfolio.rebalance(Decimal(cash_delta))
 
 

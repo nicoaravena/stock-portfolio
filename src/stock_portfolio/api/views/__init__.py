@@ -2,7 +2,11 @@ from ninja import NinjaAPI
 from pydantic import ValidationError as PydanticValidationError
 
 from stock_portfolio.api.services import NoPendingPlanError, PendingPlanError
-from stock_portfolio.domain import NotFoundError, PortfolioError
+from stock_portfolio.domain import (
+    InsufficientFundsError,
+    NotFoundError,
+    PortfolioError,
+)
 
 from ._exceptions import Conflict
 from .portfolios import router as portfolio_router
@@ -25,6 +29,14 @@ def _conflict(request, exc):
 @api.exception_handler(NotFoundError)
 def _not_found(request, exc):
     return api.create_response(request, {"detail": str(exc)}, status=404)
+
+
+# Worded with the request/response field names: API clients see this text, so
+# it is part of the HTTP contract and stays stable when the domain wording changes.
+@api.exception_handler(InsufficientFundsError)
+def _insufficient_funds(request, exc):
+    detail = "cash must not be greater than market_value + cash_leftover"
+    return api.create_response(request, {"detail": detail}, status=422)
 
 
 @api.exception_handler(PortfolioError)

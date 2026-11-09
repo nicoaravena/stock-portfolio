@@ -236,7 +236,10 @@ def test_rebalance_conflict_message(client: Client, portfolio_id: int):
 def test_rebalance_rejected_does_not_store_plan(client: Client, portfolio_id: int):
     url = f"/api/portfolios/{portfolio_id}"
     response = client.post(f"{url}/rebalance", {"cash": "-100"}, JSON)
-    assert "cash must not be greater" in response.json()["detail"]
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "cash must not be greater than market_value + cash_leftover"
+    }
     assert client.get(url).json()["pending_plan"] is None
 
 

@@ -115,11 +115,8 @@ class Portfolio:
         # longer match the prices the trades are planned with.
         total = self._value_at(prices) + self.cash + cash_delta
         if total < 0:
-            # Worded with the HTTP field names (`cash`, `cash_leftover`) on
-            # purpose: API clients see this text in 422 responses, and the API
-            # tests and cartero/17 assert it. Keep it stable.
             raise InsufficientFundsError(
-                "cash must not be greater than market_value + cash_leftover"
+                f"Cannot withdraw {-cash_delta}: the portfolio is worth {total - cash_delta}"
             )
 
         trades: list[Trade] = []
