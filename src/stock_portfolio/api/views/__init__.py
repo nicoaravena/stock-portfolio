@@ -1,6 +1,7 @@
 from ninja import NinjaAPI
 from pydantic import ValidationError as PydanticValidationError
 
+from stock_portfolio.api.services import NoPendingPlanError, PendingPlanError
 from stock_portfolio.domain import NotFoundError, PortfolioError
 
 from ._exceptions import Conflict
@@ -13,6 +14,8 @@ api.add_router("/stocks", stock_router)
 
 
 @api.exception_handler(Conflict)
+@api.exception_handler(NoPendingPlanError)
+@api.exception_handler(PendingPlanError)
 def _conflict(request, exc):
     return api.create_response(request, {"detail": str(exc)}, status=409)
 

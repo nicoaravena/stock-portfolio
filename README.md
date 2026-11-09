@@ -141,18 +141,23 @@ flowchart TD
     L --> M["return RebalancePlan(total_value = total,<br/>trades, cash_leftover = total − invested)"]
 ```
 
-`services.execute_trade_plan(portfolio, plan)` applies the plan in a single transaction, with the following logic:
+`services.execute_pending_plan(portfolio)` applies the pending plan in a single transaction, with the following logic:
 
 1. A request triggers the execution of a rebalance plan in a portfolio.
-2. The trades are executed one by one without being committed.
-3. When no trades are left and no errors occurred, the transaction is committed.
+2. The portfolio row is locked and the plan is read and cleared, so the plan is executed at most once:
+   a concurrent request waits for the lock, then finds no plan (409).
+3. The trades are executed one by one without being committed (`execute_trade_plan`).
+4. When no trades are left and no errors occurred, the transaction is committed. On an error, everything is rolled back, including the cleared plan.
 
 The logic is translated in the code as this flowchart:
 
 ```mermaid
 flowchart TD
-    A["execute_trade_plan(portfolio, plan)"] --> B["BEGIN transaction"]
-    B --> C["For each trade (sells first)"]
+    A["execute_pending_plan(portfolio)"] --> B["BEGIN transaction<br/>lock portfolio row"]
+    B --> P{"pending_plan?"}
+    P -- no --> Q["raise NoPendingPlanError (409), rollback"]
+    P -- yes --> R["pending_plan = None"]
+    R --> C["For each trade (sells first)"]
     C --> D{"holding_id belongs to portfolio?"}
     D -- no --> E["raise HoldingNotFoundError, rollback"]
     D -- yes --> F["SELL: quantity − trade.quantity<br/>BUY: quantity + trade.quantity"]
@@ -161,7 +166,7 @@ flowchart TD
     G -- no --> I["Save holding quantity"]
     I --> J{"more trades?"}
     J -- yes --> C
-    J -- no --> K["portfolio.cash_leftover = plan.cash_leftover<br/>portfolio.pending_plan = None"]
+    J -- no --> K["portfolio.cash_leftover = plan.cash_leftover"]
     K --> L["COMMIT"]
 ```
 
@@ -183,7 +188,8 @@ uv run python manage.py runserver    # Swagger UI at http://127.0.0.1:8000/api/d
 | POST | `/api/portfolios/{id}/execute-trades` | – |
 
 - Stocks must exist before they are used in a portfolio. `quantity` and `allocation` default to 0; allocations must sum to 100 and a 0% holding is sold fully on rebalance.
-- `rebalance` stores the plan on the portfolio (`pending_plan`). `execute-trades` applies it and clears it. Updating a portfolio discards the pending plan.
+- `rebalance` stores the plan on the portfolio (`pending_plan`), only if no plan is pending. `execute-trades` applies it and clears it. Both hold under concurrent requests: one rebalance stores its plan and one execution applies it, the others get 409. Updating a portfolio discards the pending plan.
+- SQLite runs in `IMMEDIATE` transaction mode because it ignores row locks (`select_for_update`): write transactions run one at a time.
 - A stock held by a portfolio can't be deleted (409). Unknown stocks or holdings return 404; domain rule violations return 422.
 
 ### API tour

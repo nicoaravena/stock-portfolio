@@ -256,6 +256,53 @@ def test_execute_trades_uses_planned_price(client: Client, portfolio_id: int):
     assert Decimal(body["cash_leftover"]) == 1
 
 
+def test_execute_trades_applies_plan_once(
+    client: Client, portfolio_id: int, monkeypatch
+):
+    """A second execute-trades that arrives while the first one is applying the
+    plan must find the plan already taken (409), not apply the trades again."""
+    url = f"/api/portfolios/{portfolio_id}"
+    client.post(f"{url}/rebalance", {"cash": "5"}, JSON)  # plan: BUY 4 A
+    execute = services.execute_trade_plan
+    calls, concurrent = [], []
+
+    def execute_with_concurrent_request(portfolio, plan):
+        calls.append(plan)
+        if len(calls) == 1:
+            concurrent.append(client.post(f"{url}/execute-trades"))
+        execute(portfolio, plan)
+
+    monkeypatch.setattr(services, "execute_trade_plan", execute_with_concurrent_request)
+
+    response = client.post(f"{url}/execute-trades")
+    assert response.status_code == 200
+    assert [r.status_code for r in concurrent] == [409]
+    assert _quantities(response.json()) == {"A": 7, "B": 2}
+
+
+def test_rebalance_stores_one_plan(client: Client, portfolio_id: int, monkeypatch):
+    """Of two rebalances racing for a portfolio without a pending plan, exactly
+    one stores its plan; the other gets 409 instead of overwriting it.
+
+    Both requests share the test's connection, so the second one runs inside the
+    first one's transaction and is rolled back with it: only the status codes
+    are checked here, not which plan ends up stored."""
+    url = f"/api/portfolios/{portfolio_id}"
+    rebalance = services.rebalance
+    calls, concurrent = [], []
+
+    def rebalance_with_concurrent_request(portfolio, cash):
+        calls.append(cash)
+        if len(calls) == 1:
+            concurrent.append(client.post(f"{url}/rebalance", {"cash": "5"}, JSON))
+        return rebalance(portfolio, cash)
+
+    monkeypatch.setattr(services, "rebalance", rebalance_with_concurrent_request)
+
+    first = client.post(f"{url}/rebalance", {}, JSON)
+    assert sorted(r.status_code for r in [first, *concurrent]) == [200, 409]
+
+
 def test_unexpected_value_error_is_500(client: Client, portfolio_id: int, monkeypatch):
     """A bug raising ValueError must not be reported as a validation error."""
     monkeypatch.setattr(services, "rebalance", Mock(side_effect=ValueError("bug")))

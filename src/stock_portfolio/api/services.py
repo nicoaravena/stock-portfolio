@@ -60,6 +60,57 @@ def rebalance(portfolio: models.Portfolio, cash: Decimal = Decimal(0)) -> Rebala
     )
 
 
+class PendingPlanError(Exception):
+    """The portfolio already has a rebalance plan waiting to be executed."""
+
+
+class NoPendingPlanError(Exception):
+    """The portfolio has no rebalance plan waiting to be executed."""
+
+
+@transaction.atomic
+def plan_rebalance(
+    portfolio: models.Portfolio, cash: Decimal = Decimal(0)
+) -> RebalancePlan:
+    """Plan a rebalance and store it as the portfolio's pending plan.
+
+    Only one plan can be pending. The plan is stored only if none is pending
+    yet (compare-and-set on `pending_plan IS NULL`), so of two concurrent
+    requests one stores its plan and the other gets PendingPlanError.
+    """
+    # Lock the row so holdings can't be replaced while the plan is computed.
+    portfolio = models.Portfolio.objects.select_for_update().get(pk=portfolio.pk)
+    if portfolio.pending_plan is not None:
+        raise PendingPlanError("Portfolio has a pending rebalance plan")
+    plan = rebalance(portfolio, cash)
+    stored = models.Portfolio.objects.filter(
+        pk=portfolio.pk, pending_plan__isnull=True
+    ).update(pending_plan=plan.model_dump(mode="json"))
+    if not stored:
+        raise PendingPlanError("Portfolio has a pending rebalance plan")
+    return plan
+
+
+@transaction.atomic
+def execute_pending_plan(portfolio: models.Portfolio) -> None:
+    """Execute the portfolio's pending plan exactly once.
+
+    The plan is read, checked and cleared in the same transaction as the trades,
+    with the portfolio row locked. A concurrent request waits for the lock and
+    then finds no plan, instead of applying the same trades a second time.
+    """
+    # Re-read under the lock: the caller's copy may hold a plan that another
+    # request has executed since.
+    portfolio = models.Portfolio.objects.select_for_update().get(pk=portfolio.pk)
+    if portfolio.pending_plan is None:
+        raise NoPendingPlanError("Portfolio has no pending rebalance plan")
+    plan = RebalancePlan.model_validate(portfolio.pending_plan)
+    # Claim the plan before touching any holding.
+    portfolio.pending_plan = None
+    portfolio.save(update_fields=["pending_plan"])
+    execute_trade_plan(portfolio, plan)
+
+
 @transaction.atomic
 def execute_trade_plan(portfolio: models.Portfolio, plan: RebalancePlan) -> None:
     """Apply the plan's trades to the portfolio holdings and clear the plan."""

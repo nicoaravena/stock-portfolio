@@ -35,6 +35,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # SQLite ignores select_for_update(). IMMEDIATE takes the write lock when
+        # a transaction starts, so concurrent transactions run one after another.
+        "OPTIONS": {"transaction_mode": "IMMEDIATE"},
     }
 }
 

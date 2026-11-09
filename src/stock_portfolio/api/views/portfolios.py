@@ -64,12 +64,7 @@ def delete_portfolio(request, portfolio_id: int):
 @router.post("/{portfolio_id}/rebalance", response={200: RebalancePlan, 409: ErrorOut})
 def rebalance_portfolio(request, portfolio_id: int, payload: RebalanceIn):
     portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
-    if portfolio.pending_plan:
-        raise Conflict("Portfolio has a pending rebalance plan")
-    plan = services.rebalance(portfolio, payload.cash)
-    portfolio.pending_plan = plan.model_dump(mode="json")
-    portfolio.save(update_fields=["pending_plan"])
-    return plan
+    return services.plan_rebalance(portfolio, payload.cash)
 
 
 @router.post(
@@ -78,8 +73,5 @@ def rebalance_portfolio(request, portfolio_id: int, payload: RebalanceIn):
 )
 def execute_trades(request, portfolio_id: int):
     portfolio = get_object_or_404(models.Portfolio, id=portfolio_id)
-    if portfolio.pending_plan is None:
-        raise Conflict("Portfolio has no pending rebalance plan")
-    plan = RebalancePlan.model_validate(portfolio.pending_plan)
-    services.execute_trade_plan(portfolio, plan)
+    services.execute_pending_plan(portfolio)
     return _load(portfolio_id)
