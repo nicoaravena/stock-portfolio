@@ -1,17 +1,13 @@
 from decimal import Decimal
-from enum import Enum
 
 from ninja import ModelSchema, Schema
 from pydantic import Field, field_validator
 
+from stock_portfolio.domain import Action
+
 from .models import Holding, Portfolio, Stock
 
 HUNDRED = Decimal(value="100.0")
-
-
-class Action(str, Enum):
-    BUY = "BUY"
-    SELL = "SELL"
 
 
 class StockPriceIn(Schema):

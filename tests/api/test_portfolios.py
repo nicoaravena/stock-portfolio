@@ -1,7 +1,10 @@
 from decimal import Decimal
+from unittest.mock import Mock
 
 import pytest
 from django.test import Client
+
+from stock_portfolio.api import services
 
 pytestmark = pytest.mark.django_db
 
@@ -251,3 +254,11 @@ def test_execute_trades_uses_planned_price(client: Client, portfolio_id: int):
     body = client.post(f"{url}/execute-trades").json()
     assert _quantities(body) == {"A": 7, "B": 2}
     assert Decimal(body["cash_leftover"]) == 1
+
+
+def test_unexpected_value_error_is_500(client: Client, portfolio_id: int, monkeypatch):
+    """A bug raising ValueError must not be reported as a validation error."""
+    monkeypatch.setattr(services, "rebalance", Mock(side_effect=ValueError("bug")))
+    client.raise_request_exception = False
+    response = client.post(f"/api/portfolios/{portfolio_id}/rebalance", {}, JSON)
+    assert response.status_code == 500

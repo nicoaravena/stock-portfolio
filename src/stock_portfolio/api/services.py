@@ -1,58 +1,56 @@
-"""Portfolio rebalancing and persistence on top of the ORM models."""
+"""Application services: map ORM rows to the domain and persist the results.
 
-from decimal import ROUND_FLOOR, Decimal
+The rebalance rules live in `stock_portfolio.domain.Portfolio.rebalance`; this
+module only translates between the database / API shapes and the domain.
+"""
+
+from decimal import Decimal
 
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 
+from stock_portfolio import domain
 from stock_portfolio.api import models
-from stock_portfolio.api.schemas import (
-    HUNDRED,
-    Action,
-    PortfolioIn,
-    PortfolioOut,
-    RebalancePlan,
-    Trade,
-)
+from stock_portfolio.api.schemas import HUNDRED, PortfolioIn, RebalancePlan, Trade
 
 
-def rebalance(portfolio: PortfolioOut, cash: Decimal = Decimal(0)) -> RebalancePlan:
-    """Return the trades needed to reach the target allocation.
+def _holdings(portfolio: models.Portfolio) -> list[models.Holding]:
+    # .all() reuses a prefetch_related cache when the caller loaded one.
+    return sorted(portfolio.holdings.all(), key=lambda h: h.id)  # ty: ignore[unresolved-attribute]
 
-    - cash=0 (default): no cash added or retired.
-    - cash>0: fresh cash is added to the pool before computing targets.
-    - cash<0: cash is being removed from the portfolio before computing targets.
-    - Whole shares only: target quantities are rounded DOWN so buys never
-        exceed available funds; the remainder is reported as `cash_leftover`.
-    - Holdings with a 0% allocation are sold fully.
-    """
-    total = portfolio.market_value + Decimal(cash) + portfolio.cash_leftover
-    if total < 0:
-        raise ValueError("cash must not be greater than market_value + cash_leftover")
-    trades: list[Trade] = []
-    invested = Decimal(0)
 
-    for holding in portfolio.holdings:
-        price = holding.stock.last_price
-        target_value = total * holding.allocation / HUNDRED
-        target_qty = int((target_value / price).to_integral_value(rounding=ROUND_FLOOR))
-        invested += price * target_qty
+def to_domain(portfolio: models.Portfolio) -> domain.Portfolio:
+    """Build the domain Portfolio, with prices frozen as loaded from the DB."""
+    holdings = _holdings(portfolio)
+    prices = domain.PriceSnapshot(
+        {h.stock.symbol: h.stock.last_price for h in holdings}
+    )
+    stocks = {h.id: domain.Stock(h.stock.symbol, prices) for h in holdings}
+    return domain.Portfolio(
+        holdings={stocks[h.id]: h.quantity for h in holdings},
+        # The API stores integer percents; the domain works with fractions.
+        allocation={stocks[h.id]: Decimal(h.allocation) / HUNDRED for h in holdings},
+        cash=portfolio.cash_leftover,
+    )
 
-        delta = target_qty - holding.quantity
-        if delta != 0:
-            trades.append(
-                Trade(
-                    holding_id=holding.id,
-                    symbol=holding.stock.symbol,
-                    action=Action.BUY if delta > 0 else Action.SELL,
-                    quantity=abs(delta),
-                    price=price,
-                )
-            )
 
-    trades.sort(key=lambda t: t.action is Action.BUY)  # sells first
+def rebalance(portfolio: models.Portfolio, cash: Decimal = Decimal(0)) -> RebalancePlan:
+    """Plan the trades for `portfolio`, adding (cash > 0) or removing (cash < 0) cash."""
+    plan = to_domain(portfolio).rebalance(Decimal(cash))
+    # A stock appears once per portfolio (unique_portfolio_stock).
+    holding_ids = {h.stock.symbol: h.id for h in _holdings(portfolio)}
     return RebalancePlan(
-        total_value=total, trades=trades, cash_leftover=total - invested
+        total_value=plan.total_value,
+        trades=[
+            Trade(
+                holding_id=holding_ids[t.symbol],
+                symbol=t.symbol,
+                action=t.action,
+                quantity=t.quantity,
+                price=t.price,
+            )
+            for t in plan.trades
+        ],
+        cash_leftover=plan.cash_leftover,
     )
 
 
@@ -60,15 +58,19 @@ def rebalance(portfolio: PortfolioOut, cash: Decimal = Decimal(0)) -> RebalanceP
 def execute_trade_plan(portfolio: models.Portfolio, plan: RebalancePlan) -> None:
     """Apply the plan's trades to the portfolio holdings and clear the plan."""
     for trade in plan.trades:
-        holding = get_object_or_404(
-            models.Holding, id=trade.holding_id, portfolio=portfolio
-        )
-        if trade.action is Action.SELL:
+        holding = models.Holding.objects.filter(  # ty: ignore[unresolved-attribute]
+            id=trade.holding_id, portfolio=portfolio
+        ).first()
+        if holding is None:
+            raise domain.HoldingNotFoundError(
+                f"Holding {trade.holding_id} not found in portfolio {portfolio.pk}"
+            )
+        if trade.action is domain.Action.SELL:
             new_quantity = holding.quantity - trade.quantity
         else:
             new_quantity = holding.quantity + trade.quantity
         if new_quantity < 0:
-            raise ValueError(
+            raise domain.OversellError(
                 f"Can't execute trade {trade}, final holding quantity must not "
                 "be negative."
             )
@@ -90,9 +92,12 @@ def write_portfolio(portfolio: models.Portfolio, payload: PortfolioIn) -> None:
 
     portfolio.holdings.all().delete()  # ty: ignore[unresolved-attribute]
     for h in payload.holdings:
+        stock = models.Stock.objects.filter(symbol=h.symbol).first()  # ty: ignore[unresolved-attribute]
+        if stock is None:
+            raise domain.StockNotFoundError(f"Stock {h.symbol} not found")
         models.Holding.objects.create(  # ty: ignore[unresolved-attribute]
             portfolio=portfolio,
-            stock=get_object_or_404(models.Stock, symbol=h.symbol),
+            stock=stock,
             quantity=h.quantity,
             allocation=h.allocation,
         )

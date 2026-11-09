@@ -66,7 +66,7 @@ def rebalance_portfolio(request, portfolio_id: int, payload: RebalanceIn):
     portfolio = _load(portfolio_id)
     if portfolio.pending_plan:
         raise Conflict("Portfolio has a pending rebalance plan")
-    plan = services.rebalance(PortfolioOut.from_orm(portfolio), payload.cash)
+    plan = services.rebalance(portfolio, payload.cash)
     portfolio.pending_plan = plan.model_dump(mode="json")
     portfolio.save(update_fields=["pending_plan"])
     return plan
